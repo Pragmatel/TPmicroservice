@@ -1,14 +1,63 @@
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
 const express = require("express");
-const axios = require("axios");
-
 const app = express();
+require("dotenv").config();
+const helmet = require("helmet");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit");
+
 app.use(express.json());
+
+app.use(helmet());
+app.use(cors());
+app.use(rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+}));
+
+const swaggerSpec = swaggerJsdoc({
+    definition: {
+        openapi: "3.0.0",
+        info: {
+            title: "Booking Service API",
+            version: "1.0.0",
+            description: "Documentation du Booking Service"
+        }
+    },
+    apis: [__filename]
+});
+
+app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec)
+);
 
 const bookings = [];
 
-const IDENTITY_URL = "http://localhost:3001";
-const INVENTORY_URL = "http://localhost:3002";
-const PAYMENT_URL = "http://localhost:3003";
+const IDENTITY_URL = process.env.IDENTITY_URL || "http://localhost:3001";
+const INVENTORY_URL = process.env.INVENTORY_URL || "http://localhost:3002";
+const PAYMENT_URL = process.env.PAYMENT_URL || "http://localhost:3003";
+
+/**
+ * @swagger
+ * /bookings:
+ *   post:
+ *     summary: Créer une réservation
+ *     description: Vérifie l'utilisateur, réserve une place, traite le paiement puis confirme ou annule la réservation.
+ *     tags:
+ *       - Bookings
+ *     responses:
+ *       200:
+ *         description: Réservation confirmée
+ *       400:
+ *         description: Utilisateur inexistant ou plus de place
+ *       402:
+ *         description: Paiement refusé
+ *       500:
+ *         description: Erreur interne
+ */
 //créer une réservation complète
 app.post("/bookings", async (req, res) => {
     const { userId, eventId, amount, cardNumber } = req.body;
@@ -90,10 +139,42 @@ app.post("/bookings", async (req, res) => {
         return res.status(500).json(booking);
     }
 });
+
+/**
+ * @swagger
+ * /bookings:
+ *   get:
+ *     summary: Consulter toutes les réservations
+ *     tags:
+ *       - Bookings
+ *     responses:
+ *       200:
+ *         description: Liste des réservations
+ */
 //consulter toutes les réservations
 app.get("/bookings", (req, res) => {
     res.json(bookings);
 });
+
+/**
+ * @swagger
+ * /bookings/{id}:
+ *   get:
+ *     summary: Consulter une réservation
+ *     tags:
+ *       - Bookings
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Réservation trouvée
+ *       404:
+ *         description: Réservation introuvable
+ */
 //consulter une réservation précise
 app.get("/bookings/:id", (req, res) => {
     const booking = bookings.find(b => b.id === Number(req.params.id));
@@ -105,6 +186,8 @@ app.get("/bookings/:id", (req, res) => {
     res.json(booking);
 });
 
-app.listen(3004, () => {
-    console.log("Booking Service lancé sur le port 3004");
+const PORT = process.env.PORT || 3004;
+
+app.listen(PORT, () => {
+    console.log(`Booking Service lancé sur le port ${PORT}`);
 });
