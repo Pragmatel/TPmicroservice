@@ -1,0 +1,14 @@
+{
+  "name": "reservation-tp",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "concurrently \"npm run identity\" \"npm run inventory\" \"npm run payment\" \"npm run booking\"",
+    "identity": "node identity-service/identity-server.js",
+    "inventory": "node inventory-service/inventory-server.js",
+    "payment": "node payment-service/payment-server.js",
+    "booking": "node booking-service/booking-server.js"
+  },
+  "dependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
